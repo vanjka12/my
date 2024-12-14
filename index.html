@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тетріс</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #111;
+            color: white;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        #gameCanvas {
+            border: 2px solid #ccc;
+            background-color: #000;
+        }
+
+        .score {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 20px;
+            z-index: 10;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="score">Скор: 0</div>
+    <canvas id="gameCanvas" width="300" height="600"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const ROWS = 20;
+        const COLS = 10;
+        const BLOCK_SIZE = 30;
+        const BOARD_WIDTH = COLS * BLOCK_SIZE;
+        const BOARD_HEIGHT = ROWS * BLOCK_SIZE;
+
+        let score = 0;
+        let board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+
+        const tetrominoes = [
+            [[1, 1, 1, 1]], // I
+            [[1, 1, 1], [0, 0, 1]], // J
+            [[1, 1, 1], [1]], // L
+            [[1, 1], [1, 1]], // O
+            [[0, 1, 1], [1, 1]], // S
+            [[1, 1, 0], [0, 1, 1]], // Z
+            [[0, 1, 0], [1, 1, 1]] // T
+        ];
+
+        let currentPiece = getRandomPiece();
+        let pieceX = Math.floor(COLS / 2) - 1;
+        let pieceY = 0;
+        let gameOver = false;
+
+        function getRandomPiece() {
+            return tetrominoes[Math.floor(Math.random() * tetrominoes.length)];
+        }
+
+        function drawBoard() {
+            ctx.clearRect(0, 0, BOARD_WIDTH, BOARD_HEIGHT);
+            for (let row = 0; row < ROWS; row++) {
+                for (let col = 0; col < COLS; col++) {
+                    if (board[row][col]) {
+                        ctx.fillStyle = 'cyan';
+                        ctx.fillRect(col * BLOCK_SIZE, row * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                    }
+                }
+            }
+        }
+
+        function drawPiece() {
+            for (let row = 0; row < currentPiece.length; row++) {
+                for (let col = 0; col < currentPiece[row].length; col++) {
+                    if (currentPiece[row][col]) {
+                        ctx.fillStyle = 'cyan';
+                        ctx.fillRect((pieceX + col) * BLOCK_SIZE, (pieceY + row) * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                    }
+                }
+            }
+        }
+
+        function movePiece() {
+            pieceY++;
+            if (collision()) {
+                pieceY--;
+                lockPiece();
+                clearLines();
+                currentPiece = getRandomPiece();
+                pieceX = Math.floor(COLS / 2) - 1;
+                pieceY = 0;
+                if (collision()) {
+                    gameOver = true;
+                    alert('Гра завершена! Ваш скор: ' + score);
+                    resetGame();
+                }
+            }
+        }
+
+        function collision() {
+            for (let row = 0; row < currentPiece.length; row++) {
+                for (let col = 0; col < currentPiece[row].length; col++) {
+                    if (currentPiece[row][col]) {
+                        let x = pieceX + col;
+                        let y = pieceY + row;
+                        if (x < 0 || x >= COLS || y >= ROWS || board[y] && board[y][x]) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        function lockPiece() {
+            for (let row = 0; row < currentPiece.length; row++) {
+                for (let col = 0; col < currentPiece[row].length; col++) {
+                    if (currentPiece[row][col]) {
+                        board[pieceY + row][pieceX + col] = 1;
+                    }
+                }
+            }
+        }
+
+        function clearLines() {
+            for (let row = ROWS - 1; row >= 0; row--) {
+                if (board[row].every(cell => cell)) {
+                    board.splice(row, 1);
+                    board.unshift(Array(COLS).fill(0));
+                    score += 100;
+                    document.querySelector('.score').textContent = 'Скор: ' + score;
+                }
+            }
+        }
+
+        function rotatePiece() {
+            const rotated = currentPiece[0].map((_, index) => currentPiece.map(row => row[index])).reverse();
+            const tempPiece = currentPiece;
+            currentPiece = rotated;
+            if (collision()) {
+                currentPiece = tempPiece;
+            }
+        }
+
+        function moveLeft() {
+            pieceX--;
+            if (collision()) pieceX++;
+        }
+
+        function moveRight() {
+            pieceX++;
+            if (collision()) pieceX--;
+        }
+
+        function update() {
+            if (!gameOver) {
+                movePiece();
+                drawBoard();
+                drawPiece();
+            }
+        }
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'ArrowLeft') moveLeft();
+            if (event.key === 'ArrowRight') moveRight();
+            if (event.key === 'ArrowDown') movePiece();
+            if (event.key === 'ArrowUp') rotatePiece();
+        });
+
+        function resetGame() {
+            board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+            score = 0;
+            document.querySelector('.score').textContent = 'Скор: ' + score;
+            gameOver = false;
+            currentPiece = getRandomPiece();
+            pieceX = Math.floor(COLS / 2) - 1;
+            pieceY = 0;
+        }
+
+        setInterval(update, 1000 / 2); // game loop
+
+    </script>
+</body>
+</html>
